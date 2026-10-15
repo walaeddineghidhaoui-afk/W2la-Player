@@ -1,53 +1,61 @@
 name: Build W2la Player APK
 
 on:
-  workflow_dispatch:
-  push:
-    paths:
-      - 'W2laPlayer-source.zip'
-      - '.github/workflows/build.yml'
+workflow_dispatch:
+push:
+paths:
+- 'W2laPlayer-source.zip'
+- '.github/workflows/build.yml'
 
 permissions:
-  contents: read
+contents: read
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+build:
+runs-on: ubuntu-24.04
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+steps:
+  - name: Checkout repository
+    uses: actions/checkout@v4
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
+  - name: Set up Java
+    uses: actions/setup-java@v4
+    with:
+      distribution: temurin
+      java-version: '17'
 
-      - name: Install Android SDK
-        uses: android-actions/setup-android@v3
+  - name: Install Android SDK
+    uses: android-actions/setup-android@v3
+    with:
+      packages: 'platforms;android-35 build-tools;35.0.0'
 
-      - name: Install Android SDK packages
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+  - name: Verify Android SDK
+    run: |
+      sdkmanager --list_installed
+      test -d "$ANDROID_HOME/platforms/android-35"
+      test -d "$ANDROID_HOME/build-tools/35.0.0"
 
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
+  - name: Set up Gradle
+    uses: gradle/actions/setup-gradle@v4
+    with:
+      gradle-version: '8.9'
 
-      - name: Extract project
-        run: |
-          unzip W2laPlayer-source.zip -d extracted
-          test -f extracted/W2laPlayer/settings.gradle.kts
+  - name: Check and extract project
+    run: |
+      test -f W2laPlayer-source.zip
+      unzip -l W2laPlayer-source.zip
+      unzip W2laPlayer-source.zip -d extracted
+      find extracted -maxdepth 3 -name settings.gradle.kts -print
+      test -f extracted/W2laPlayer/settings.gradle.kts
 
-      - name: Build APK
-        working-directory: extracted/W2laPlayer
-        run: gradle assembleDebug --no-daemon
+  - name: Build APK
+    working-directory: extracted/W2laPlayer
+    run: gradle assembleDebug --no-daemon
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: W2laPlayer-APK
-          path: extracted/W2laPlayer/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
-          retention-days: 7
+  - name: Upload APK
+    uses: actions/upload-artifact@v4
+    with:
+      name: W2laPlayer-APK
+      path: extracted/W2laPlayer/app/build/outputs/apk/debug/app-debug.apk
+      if-no-files-found: error
+      retention-days: 7
